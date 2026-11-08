@@ -192,7 +192,9 @@ if(!D.mig2){D.mig2=1;var SN=['Thẩm Kính','Mạc Trì','Lục Yên','Hạ Dạ
 function save(){try{localStorage.setItem(K,JSON.stringify(D))}catch(x){alert('Bộ nhớ trình duyệt đã đầy, hãy dùng file nhẹ hơn')}}
 function ch(id){return D.chars.filter(function(c){return c.id==id})[0]}
 function nm(){return D.user||'Khách'}
-function R(){save();pgStop();document.getElementById('app').innerHTML=view();if(document.getElementById('pg'))pgR()}
+/* game đang chạy (hứng thức ăn / dắt đi dạo / chuột chũi / nhớ màu): KHÔNG dựng lại khi trang vẽ lại */
+function gLive(){return !!(document.getElementById('pg')&&D.sub=='game'&&(G.s=='catch'||G.s=='walk'||G.s=='x'))}
+function R(){save();var live=gLive();if(!live)pgStop();document.getElementById('app').innerHTML=view();var pg=document.getElementById('pg');if(pg){if(!live||!pg.firstChild)pgR()}else if(live)pgStop()}
 function th(c,big){return '<div class="th'+(c.r18&&!D.ageOk?' bl':'')+'" style="background:linear-gradient(160deg,'+c.c+',#1b1020)">'+c.emo+'</div>'}
 function view(){
  var h='';
@@ -1579,6 +1581,7 @@ function soft(force){
  if(a&&(a.tagName=='TEXTAREA'||(a.tagName=='INPUT'&&['file','checkbox','button','radio'].indexOf(a.type)<0)))typing=true;
  if(app)[].forEach.call(app.querySelectorAll('textarea,input[type=text],input:not([type])'),function(i){if(i.value)typing=true});
  if(typing&&!force){dirty=true;return}   /* không cập nhật khi đang gõ dở */
+ if(!force&&gLive()){dirty=true;return}   /* đang chơi game: hoãn cập nhật cloud, chơi xong mới vẽ lại */
  dirty=false;
  var y=window.scrollY;try{R()}catch(x){}window.scrollTo(0,y);
 }
