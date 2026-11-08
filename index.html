@@ -219,7 +219,7 @@ function subOld(){
   var tags=['Tất cả'].concat(D.me?['⭐ Đã lưu']:[],D.tg);
   var q=D.q.toLowerCase(),L=D.chars.filter(function(c){return !c.comm&&(D.tag=='Tất cả'||(D.tag[0]=='⭐'?D.saved.indexOf(c.id)>=0:c.tags.indexOf(D.tag)>=0))&&(!q||(c.name+c.quote+c.tags.join(' ')).toLowerCase().indexOf(q)>=0)});
   return '<div class="pad"><input type="search" id="q" placeholder="🔍 Tìm char hoặc tag..." value="'+e(D.q)+'"></div><div class="chips">'+tags.map(function(t){return '<button class="chip'+(D.tag==t?' on':'')+'" data-a="tag" data-v="'+e(t)+'">'+(t=='Tất cả'||t[0]=='⭐'?t:'#'+e(t))+'</button>'}).join('')+'</div>'+
-  '<div class="grid">'+(L.map(function(c){return '<div class="ch" data-a="open" data-v="'+c.id+'">'+th(c)+(c.r18?'<span class="bdg r">18+</span>':'')+'<span class="bdg">❤ '+c.likes+'</span><div class="cb"><b>'+e(c.name)+'</b><i>"'+e(c.quote)+'"</i><span class="tg">'+c.tags.map(function(t){return '#'+e(t)}).join(' ')+'</span></div></div>'}).join('')||'<p class="mut">Không tìm thấy char nào.</p>')+'</div>';
+  '<div class="grid">'+(L.map(function(c){return '<div class="ch" data-a="open" data-v="'+c.id+'">'+th(c)+(c.r18?'<span class="bdg r">18+</span>':'')+'<span class="bdg">❤ '+(c.plays||0)+'</span><div class="cb"><b>'+e(c.name)+'</b><i>"'+e(c.quote)+'"</i><span class="tg">'+c.tags.map(function(t){return '#'+e(t)}).join(' ')+'</span></div></div>'}).join('')||'<p class="mut">Không tìm thấy char nào.</p>')+'</div>';
  }
  if(D.sub=='cmt')return '<div class="card" style="margin-top:0">'+(D.cmts.map(function(m){var c=ch(m.cid);return '<div class="row">'+ucv(m)+uav(m)+'<div class="g"><b>'+e(m.u)+'</b> <span class="mut">về '+(c?e(c.name):'?')+' · '+e(m.d)+'</span><div>'+e(m.t)+'</div></div>'+(D.role=='creator'?'<button class="btn red sm" data-a="delc" data-v="'+m.id+'">Xóa</button>':'')+'</div>'}).join('')||'<p class="mut">Chưa có bình luận.</p>')+'</div><p class="mut pad">Bình luận ở từng char sẽ tự hiện ở đây.</p>';
  if(D.sub=='rank'){
@@ -339,7 +339,7 @@ function rd(f,cb){if(!f)return cb('');var k=Date.now()+''+Math.floor(Math.random
 try{var q=indexedDB.open('cc',1);q.onupgradeneeded=function(){q.result.createObjectStore('m')};q.onsuccess=function(){DB=q.result;var L=[],r=DB.transaction('m').objectStore('m').openCursor();r.onsuccess=function(){var c=r.result;if(c){L.push([c.key,c.value]);c.continue()}else{var n=L.length;L.forEach(function(x){var fr=new FileReader();fr.onload=function(){M[x[0]]=fr.result;T[x[0]]=x[1].type;if(--n==0)R()};fr.readAsDataURL(x[1])})}}}}catch(x){}
 function hs(s){var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return ''+h}
 function th(c){return '<div class="th'+(c.r18&&!D.ageOk?' bl':'')+'" style="background:linear-gradient(160deg,'+c.c+',#1b1020);overflow:hidden">'+(c.img?im(c.img):c.emo)+'</div>'}
-function card(c){return '<div class="ch" data-a="open" data-v="'+c.id+'">'+th(c)+(c.r18?'<span class="bdg r">18+</span>':'')+'<span class="bdg">❤ '+c.likes+'</span><div class="cb"><b>'+e(c.name)+'</b><i>"'+e(c.quote)+'"</i><span class="tg">'+c.tags.map(function(t){return '#'+e(t)}).join(' ')+'</span></div></div>'}
+function card(c){return '<div class="ch" data-a="open" data-v="'+c.id+'">'+th(c)+(c.r18?'<span class="bdg r">18+</span>':'')+'<span class="bdg">❤ '+(c.plays||0)+'</span><div class="cb"><b>'+e(c.name)+'</b><i>"'+e(c.quote)+'"</i><span class="tg">'+c.tags.map(function(t){return '#'+e(t)}).join(' ')+'</span></div></div>'}
 function charForm(k){var p=k?'k':'n';return '<div class="card"><h2>'+(k?'Thêm char commission':'Đăng char mới')+'</h2><input type="text" id="'+p+'n" placeholder="Tên char"><input type="text" id="'+p+'q" placeholder="Câu nói chủ đề"><textarea id="'+p+'s" rows="3" placeholder="Cốt truyện"></textarea><input type="text" id="'+p+'t" placeholder="Tag, cách nhau dấu phẩy (Nam, Ngọt)"><input type="text" id="'+p+'l" placeholder="Link chat (c.ai, Janitor...)"><input type="text" id="'+p+'i" placeholder="Link thông tin char"><div class="mut">Ảnh char</div><input type="file" id="'+p+'m" accept="image/*"><label class="sw"><input type="checkbox" id="'+p+'r"> 🔞 Char có yếu tố 18+</label>'+(k?'':'<label class="sw"><input type="checkbox" id="nx"> ⏳ Chuẩn bị ra lò (chỉ hiện câu nói ở trang chủ, ẩn cốt truyện &amp; link)</label>')+(k?'<input type="text" id="kb" placeholder="Tên khách đặt"><label class="sw"><input type="checkbox" id="kp"> Khách đồng ý public</label>':'')+'<p><button class="btn sm" data-a="addch" data-v="'+(k?1:0)+'">Đăng char</button></p></div>'}
 function comm(){var o=D.comm.open,cr=D.role=='creator',h='<div class="pad" style="padding-top:20px"><h1>🎨 Commission</h1>'+(cr?'<label class="sw"><input type="checkbox" id="co"'+(o?' checked':'')+'> Đang nhận comm</label>':'')+'<p><b style="color:'+(o?'var(--ok)':'#ff7a7a')+'">'+(o?'● Đang mở nhận comm':'● Không nhận commission')+'</b></p></div>';
  if(o)h+='<div class="card"><h2>Bảng giá</h2>'+D.comm.price.split('\n').filter(Boolean).map(function(l){var a=l.split('|');return '<div class="row"><span class="g">'+e(a[0])+'</span><b>'+e(a[1]||'')+'</b></div>'}).join('')+'<p><a class="btn" href="'+e(D.comm.contact)+'" target="_blank" rel="noopener">Liên hệ đặt comm</a></p></div><div class="card"><h2>Ảnh bảng giá chi tiết</h2>'+(D.comm.img?im(D.comm.img,'img'):'<span class="mut">Chưa có ảnh.</span>')+'</div>';
@@ -1313,6 +1313,20 @@ A.play1=function(v){
 };
 var like0=A.like;
 A.like=function(v){like0(v);var p=(D.posts||[]).filter(function(x){return x.id==v})[0];if(p)bump('like:'+v,(p.l||1)-1).then(function(n){if(n!=null)p.l=n})};
+/* ❤ trên thẻ char = lượt (cùng số với BXH Top chồng iu). Ngoài bấm Chat ngay, còn tính 1 lượt khi: lưu char, hoặc ở lâu trong trang char */
+function addLuot(c){if(!c)return;c.plays=(c.plays||0)+1;try{save()}catch(x){}bump('play:'+c.id,(c.plays||1)-1).then(function(n){if(n!=null){c.plays=n;try{save()}catch(x){}}})}
+var save0=A.save;
+A.save=function(v){var id=+v,had=D.saved.indexOf(id)>=0;save0(v);var c=ch(id),k='cc_sv_'+id;
+ if(!had&&c&&!ls(k)){ls(k,'1');addLuot(c)}};            /* lưu char: +1 lượt, mỗi thiết bị chỉ 1 lần / char (bỏ lưu rồi lưu lại không tính thêm) */
+var DWELL_MS=30000,dwId=null,dwT=0;                     /* ở trong trang char đủ 30 giây = +1 lượt (đổi thời gian ở DWELL_MS) */
+setInterval(function(){
+ var id=(D.tab=='home'&&!D.gate&&!document.hidden)?D.cid:null;
+ if(!id){dwId=null;dwT=0;return}
+ if(dwId!==id){dwId=id;dwT=0}
+ dwT+=1000;
+ if(dwT===DWELL_MS){var c=ch(id),k='cc_dw_'+id,last=+ls(k)||0,now=Date.now();
+  if(c&&now-last>=30*60000){ls(k,''+now);addLuot(c)}}   /* mỗi thiết bị tối đa 1 lượt / char / 30 phút cho kiểu này */
+},1000);
 
 /* lượt xem + người truy cập (ước tính theo thiết bị) */
 function dev(){var d=ls('cc_dev');if(!d){d=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():('d'+Date.now()+Math.random().toString(36).slice(2,12));ls('cc_dev',d)}return d}
