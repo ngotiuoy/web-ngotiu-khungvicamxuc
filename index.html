@@ -1317,8 +1317,8 @@ var like0=A.like;
 A.like=function(v){like0(v);var p=(D.posts||[]).filter(function(x){return x.id==v})[0];if(p)bump('like:'+v,(p.l||1)-1).then(function(n){if(n!=null)p.l=n})};
 /* ❤ trên thẻ char = lượt (cùng số với BXH Top chồng iu). Ngoài bấm Chat ngay, còn tính 1 lượt khi: lưu char, hoặc ở lâu trong trang char */
 function addLuot(c){if(!c)return;c.plays=(c.plays||0)+1;try{save()}catch(x){}bump('play:'+c.id,(c.plays||1)-1).then(function(n){if(n!=null){c.plays=n;try{save()}catch(x){}}})}
-var save0=A.save;
-A.save=function(v){var id=+v,had=D.saved.indexOf(id)>=0;save0(v);var c=ch(id),k='cc_sv_'+id;
+var saveChar0=A.save;
+A.save=function(v){var id=+v,had=D.saved.indexOf(id)>=0;saveChar0(v);var c=ch(id),k='cc_sv_'+id;
  if(!had&&c&&!ls(k)){ls(k,'1');addLuot(c)}};            /* lưu char: +1 lượt, mỗi thiết bị chỉ 1 lần / char (bỏ lưu rồi lưu lại không tính thêm) */
 var DWELL_MS=30000,dwId=null,dwT=0;                     /* ở trong trang char đủ 30 giây = +1 lượt (đổi thời gian ở DWELL_MS) */
 setInterval(function(){
@@ -1447,9 +1447,50 @@ function pushState(){
 }
 function schedulePush(){clearTimeout(pt);pt=setTimeout(pushState,1200)}
 
+/* ---------- char đã lưu (bảng saved_chars, mỗi tài khoản một danh sách riêng) ---------- */
+var sOwn=null,sBusy=0,sOff=false;
+function sErr(e){var m=String((e&&e.message)||e);if(/PGRST205|PGRST204|42P01|404/.test(m)){if(!sOff){sOff=true;status('Chưa tạo bảng saved_chars trên Supabase, danh sách lưu tạm thời chỉ nằm trên máy này',true)}}}
+function sOk(){return !sOff&&uid&&D.me&&ls('cc_rt')}
+function sMine(){var o={};(D.saved||[]).forEach(function(i){o[''+i]=1});return o}
+function pushSaved(){
+ if(!sOk()||sBusy||sOwn===null)return;
+ var mine=sMine(),add=[],del=[];
+ Object.keys(mine).forEach(function(k){if(!sOwn[k])add.push(k)});
+ Object.keys(sOwn).forEach(function(k){if(!mine[k])del.push(k)});
+ if(!add.length&&!del.length)return;
+ sBusy++;
+ ensureTok().then(function(){
+  var p=[];
+  if(add.length)p.push(api('/rest/v1/saved_chars?on_conflict=uid,cid',{method:'POST',auth:true,h:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:add.map(function(k){return {uid:uid,cid:k}})}).then(function(){add.forEach(function(k){sOwn[k]=1})}));
+  del.forEach(function(k){p.push(api('/rest/v1/saved_chars?uid=eq.'+uid+'&cid=eq.'+encodeURIComponent(k),{method:'DELETE',auth:true,h:{Prefer:'return=minimal'}}).then(function(){delete sOwn[k]}))});
+  return Promise.all(p);
+ }).catch(function(e){sErr(e);if(!sOff)status('Chưa lưu được danh sách char đã lưu lên cloud',true)}).then(function(){sBusy--});
+}
+function pullSaved(){
+ if(!sOk()||sBusy)return Promise.resolve(false);
+ return ensureTok().then(function(){return api('/rest/v1/saved_chars?select=cid&uid=eq.'+uid+'&limit=2000',{auth:true})}).then(function(rows){
+  var cloud={};(rows||[]).forEach(function(r){cloud[''+r.cid]=1});
+  var mine=sMine(),first=(sOwn===null),next={};
+  function exists(k){return !(D.chars&&D.chars.length)||!!ch(+k)}
+  if(first){
+   Object.keys(mine).forEach(function(k){next[k]=1});                      /* lần đầu trên máy này: gộp danh sách trên máy + trên cloud */
+   Object.keys(cloud).forEach(function(k){if(exists(k))next[k]=1});
+  }else{
+   var same=Object.keys(mine).length==Object.keys(sOwn).length&&Object.keys(mine).every(function(k){return sOwn[k]});
+   if(!same){sOwn=cloud;pushSaved();return false}                          /* máy này còn thay đổi chưa gửi: gửi trước */
+   Object.keys(cloud).forEach(function(k){if(exists(k))next[k]=1});
+  }
+  sOwn=cloud;
+  var arr=Object.keys(next).map(Number),changed=canon(arr.slice().sort())!==canon((D.saved||[]).slice().sort());
+  if(changed)D.saved=arr;
+  if(first)pushSaved();
+  return changed;
+ }).catch(function(e){sErr(e);return false});
+}
+
 /* ---------- save() hook ---------- */
 var save0=save;
-window.save=function(){save0();try{diff();if(isAd()&&canWrite)schedulePush();else if(D.me&&!isAd())schedProfile();if(D.me)pushRx()}catch(x){}};
+window.save=function(){save0();try{diff();if(isAd()&&canWrite)schedulePush();else if(D.me&&!isAd())schedProfile();if(D.me){pushRx();pushSaved()}}catch(x){}};
 
 /* ---------- đăng nhập admin ---------- */
 function adminReady(){
@@ -1483,6 +1524,7 @@ function afterLogin(m){
   delete u.pw;
   if(p){if(p.name)u.name=p.name;if(p.av)u.av=p.av;if(p.cv)u.cv=p.cv;if(p.pet&&Object.keys(p.pet).length)D.pets[m]=p.pet}
   fin(m);lastProf='';try{save()}catch(x){}R();
+  pullSaved().then(function(c){if(c)R()});
   loop();
  });
 }
@@ -1492,7 +1534,7 @@ A.dologin=function(){
  if(!m)return;
  if(m==CEMAIL){
   dl0();
-  if(isAd()&&D.me==m)signIn(m,pw).then(adminReady).catch(function(e){alert('Chưa nối được cloud.\n'+whyLogin(e))});
+  if(isAd()&&D.me==m)signIn(m,pw).then(adminReady).then(function(){return pullSaved()}).then(function(c){if(c)R()}).catch(function(e){alert('Chưa nối được cloud.\n'+whyLogin(e))});
   return;
  }
  signIn(m,pw).then(function(){return afterLogin(m)}).catch(function(e){alert(/invalid_credentials|invalid login/i.test((e&&(e.code||e.message))||'')?'Sai email hoặc mật khẩu':whyLogin(e))});
@@ -1512,7 +1554,7 @@ A.donew=function(){
  });
 };
 var lo0=A.logout;
-A.logout=function(v){lo0(v);tok=null;uid='';ls('cc_rt',null);ls('cc_uid',null);canWrite=false;lastProf='';rxOwn={}};
+A.logout=function(v){lo0(v);tok=null;uid='';ls('cc_rt',null);ls('cc_uid',null);canWrite=false;lastProf='';rxOwn={};if(sOwn!==null){D.saved=[];sOwn=null}};
 
 /* ---------- hồ sơ công khai (tên, avatar, bìa, thú cưng) ---------- */
 var lastProf='',prt=null;
@@ -1623,7 +1665,7 @@ function loop(){
  busy=true;n++;
  var changed=false,slow=(n%3==1),snap=rxSnap();
  pullCounters().then(function(c){changed=c;return pullItems()}).then(function(c){changed=changed||c;
-  if(slow)return (isAd()?Promise.resolve():pullState().then(function(r){if(r&&applyState(r))changed=true})).then(pullProfiles).then(function(c){changed=changed||c}).then(pullRx).then(function(){if(rxSnap()!==snap)changed=true});
+  if(slow)return (isAd()?Promise.resolve():pullState().then(function(r){if(r&&applyState(r))changed=true})).then(pullProfiles).then(function(c){changed=changed||c}).then(pullRx).then(function(){if(rxSnap()!==snap)changed=true}).then(pullSaved).then(function(c){changed=changed||c});
  }).then(function(){
   diff();
   if(changed||dirty)soft();
